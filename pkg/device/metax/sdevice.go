@@ -711,7 +711,7 @@ func scoreExclusiveDevices(podDevices device.PodSingleDevice, previous []*device
 				}
 			}
 
-			if find {
+			if !find {
 				restDevices = append(restDevices, &LinkDevice{
 					uuid:     dev.ID,
 					linkZone: linkZone,
@@ -726,9 +726,9 @@ func scoreExclusiveDevices(podDevices device.PodSingleDevice, previous []*device
 	availableScore := availableDevices.Score()
 	allocatedScore := allocatedDevices.Score()
 	restScore := restDevices.Score()
-	lossScore := availableScore - allocatedScore
+	lossScore := availableScore - allocatedScore - restScore
 
-	result := 10*allocatedScore + lossScore
+	result := 10*allocatedScore - lossScore
 	klog.V(5).Infof("calcScore[topo-aware] result[%d] >>> availableScore[%d], allocatedScore[%d], restScore[%d], lossScore[%d]",
 		result, availableScore, allocatedScore, restScore, lossScore)
 
