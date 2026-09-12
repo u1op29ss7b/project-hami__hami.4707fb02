@@ -303,7 +303,7 @@ func (ilu *IluvatarDevices) Fit(devices []*device.DeviceUsage, request device.Co
 		}
 
 		memreq := int32(0)
-		if dev.Count < dev.Used {
+		if dev.Count <= dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -325,7 +325,7 @@ func (ilu *IluvatarDevices) Fit(devices []*device.DeviceUsage, request device.Co
 			//This incurs an issue
 			memreq = dev.Totalmem * k.MemPercentagereq / 100
 		}
-		if dev.Totalmem-dev.Usedmem < k.Memreq {
+		if dev.Totalmem-dev.Usedmem < memreq {
 			reason[common.CardInsufficientMemory]++
 			klog.V(5).InfoS(common.CardInsufficientMemory, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total memory", dev.Totalmem, "device used memory", dev.Usedmem, "request memory", memreq)
 			continue
@@ -358,7 +358,7 @@ func (ilu *IluvatarDevices) Fit(devices []*device.DeviceUsage, request device.Co
 				Usedcores: k.Coresreq,
 			})
 		}
-		if k.Nums <= 1 {
+		if k.Nums == 0 {
 			klog.V(4).InfoS("device allocate success", "pod", klog.KObj(pod), "allocate device", tmpDevs)
 			return true, tmpDevs, ""
 		}
@@ -368,7 +368,7 @@ func (ilu *IluvatarDevices) Fit(devices []*device.DeviceUsage, request device.Co
 		reason[common.AllocatedCardsInsufficientRequest] = len(tmpDevs[k.Type])
 		klog.V(5).InfoS(common.AllocatedCardsInsufficientRequest, "pod", klog.KObj(pod), "request", originReq, "allocated", len(tmpDevs[k.Type]))
 	}
-	return false, tmpDevs, common.GenReason(reason, 0)
+	return false, tmpDevs, common.GenReason(reason, len(devices))
 }
 
 func (dev *IluvatarDevices) GetResourceNames() device.ResourceNames {
