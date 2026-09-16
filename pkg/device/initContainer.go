@@ -45,7 +45,7 @@ func CollapseInitContainerUsage(pod *corev1.Pod, raw PodDevices) PodDevices {
 		for cidx, ctrDevs := range podSingle {
 			for _, dev := range ctrDevs {
 				key := deviceKey{devType: devType, uuid: dev.UUID}
-				if cidx <= numInit {
+				if cidx < numInit {
 					cur := initPeak[key]
 					if dev.Usedmem > cur.mem {
 						cur.mem = dev.Usedmem
@@ -53,7 +53,8 @@ func CollapseInitContainerUsage(pod *corev1.Pod, raw PodDevices) PodDevices {
 					if dev.Usedcores > cur.cores {
 						cur.cores = dev.Usedcores
 					}
-					cur.slots++
+					// Init containers run sequentially: peak concurrency is one slot per device.
+					cur.slots = 1
 					initPeak[key] = cur
 				} else {
 					cur := appSum[key]
@@ -104,7 +105,7 @@ func CollapseInitContainerUsage(pod *corev1.Pod, raw PodDevices) PodDevices {
 			})
 		}
 		sort.Slice(containerDevs, func(i, j int) bool {
-			return containerDevs[i].UUID > containerDevs[j].UUID
+			return containerDevs[i].UUID < containerDevs[j].UUID
 		})
 		collapsedSingle[0] = containerDevs
 		collapsed[devType] = collapsedSingle
