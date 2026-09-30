@@ -372,7 +372,7 @@ func (mats *MetaxSDevices) Fit(devices []*device.DeviceUsage, request device.Con
 			continue
 		}
 
-		if dev.Count < dev.Used {
+		if dev.Count <= dev.Used {
 			reason[common.CardTimeSlicingExhausted]++
 			klog.V(5).InfoS(common.CardTimeSlicingExhausted, "pod", klog.KObj(pod), "device", dev.ID, "count", dev.Count, "used", dev.Used)
 			continue
@@ -390,7 +390,7 @@ func (mats *MetaxSDevices) Fit(devices []*device.DeviceUsage, request device.Con
 			memreq = dev.Totalmem * request.MemPercentagereq / 100
 		}
 
-		if dev.Totalmem-dev.Usedmem <= memreq {
+		if dev.Totalmem-dev.Usedmem < memreq {
 			reason[common.CardInsufficientMemory]++
 			klog.V(5).InfoS(common.CardInsufficientMemory, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "device total memory", dev.Totalmem, "device used memory", dev.Usedmem, "request memory", memreq)
 			continue
@@ -404,7 +404,7 @@ func (mats *MetaxSDevices) Fit(devices []*device.DeviceUsage, request device.Con
 			}
 
 			// Coresreq=100 indicates it want this card exclusively
-			if dev.Totalcore == 100 && request.Coresreq == 100 && dev.Used > 1 {
+			if dev.Totalcore == 100 && request.Coresreq == 100 && dev.Used > 0 {
 				reason[common.ExclusiveDeviceAllocateConflict]++
 				klog.V(5).InfoS(common.ExclusiveDeviceAllocateConflict, "pod", klog.KObj(pod), "device", dev.ID, "device index", i, "used", dev.Used)
 				continue
@@ -461,7 +461,7 @@ func (mats *MetaxSDevices) Fit(devices []*device.DeviceUsage, request device.Con
 
 	coreReq := request.Coresreq
 	if pod.GetAnnotations()[MetaxSGPUAppClass] == Online {
-		coreReq = request.Coresreq
+		coreReq = 0
 	}
 
 	for _, dev := range bestDevices {
